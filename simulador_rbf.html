@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Didático de RBF - Livro Silva, Spatti & Flauzino (Capítulo 6)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.88);
+      --bg-glass: rgba(30, 41, 59, 0.65);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(99, 102, 241, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-primary: #6366f1;
+      --accent-secondary: #06b6d4;
+      --accent-stage1: #10b981;
+      --accent-stage2: #f43f5e;
+      --accent-warning: #f59e0b;
+      --node-input: #0ea5e9;
+      --node-gauss: #8b5cf6;
+      --node-output: #ec4899;
+      --class-pos: #22d3ee;
+      --class-neg: #f472b6;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse at 15% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+        radial-gradient(ellipse at 85% 90%, rgba(6, 182, 212, 0.09) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 60%);
+      background-attachment: fixed;
+    }
+
+    header {
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(12px);
+      background: rgba(10, 14, 23, 0.85);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .logo-area { display: flex; align-items: center; gap: 0.85rem; }
+
+    .badge-chip {
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    }
+
+    h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem; }
+    h1 span { background: linear-gradient(to right, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .header-status { display: flex; align-items: center; gap: 1rem; }
+
+    .phase-indicator {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.4rem 0.85rem; border-radius: 9999px;
+      font-size: 0.825rem; font-weight: 600;
+      background: var(--bg-glass); border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .phase-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .phase-indicator.stage1 .phase-dot { background: var(--accent-stage1); box-shadow: 0 0 10px var(--accent-stage1); }
+    .phase-indicator.stage2 .phase-dot { background: var(--accent-stage2); box-shadow: 0 0 10px var(--accent-stage2); }
+    .phase-indicator.idle .phase-dot { background: var(--accent-secondary); box-shadow: 0 0 8px var(--accent-secondary); }
+
+    main {
+      flex: 1;
+      padding: 1.25rem 2rem;
+      display: grid;
+      grid-template-columns: 370px 1fr 440px;
+      gap: 1.5rem;
+      max-width: 1920px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1440px) {
+      main { grid-template-columns: 350px 1fr; }
+      .col-math { grid-column: span 2; }
+    }
+    @media (max-width: 1024px) {
+      main { grid-template-columns: 1fr; padding: 1rem; }
+      .col-math { grid-column: span 1; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.25s ease;
+    }
+    .card:hover { border-color: rgba(255, 255, 255, 0.15); }
+
+    .card-header {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 0.88rem; font-weight: 700; color: #e2e8f0;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .card-body { padding: 1.2rem; display: flex; flex-direction: column; gap: 1.15rem; overflow-y: auto; }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .sub-label { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+    .form-control {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 8px; color: #fff;
+      font-family: var(--font-mono); font-size: 0.875rem;
+      padding: 0.55rem 0.85rem; outline: none;
+      transition: all 0.2s ease; width: 100%;
+    }
+    .form-control:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25); background: rgba(15, 23, 42, 0.95); }
+    select.form-control option { background: #0f172a; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+
+    .btn {
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.6rem 0.9rem; border-radius: 8px;
+      font-family: var(--font-sans); font-size: 0.825rem; font-weight: 600;
+      transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35); }
+    .btn-primary:hover { box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5); filter: brightness(1.1); }
+    .btn-stage1 { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .btn-stage1:hover { background: rgba(16, 185, 129, 0.25); border-color: #34d399; }
+    .btn-stage2 { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .btn-stage2:hover { background: rgba(244, 63, 94, 0.25); border-color: #fb7185; }
+    .btn-secondary { background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid var(--border-color); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+    .check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: #cbd5e1; cursor: pointer; }
+    .check-row input { accent-color: var(--accent-primary); width: 15px; height: 15px; }
+
+    .stage-tag { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.1rem 0.45rem; border-radius: 4px; }
+    .tag-1 { background: rgba(16,185,129,0.2); color: #34d399; }
+    .tag-2 { background: rgba(244,63,94,0.2); color: #fb7185; }
+
+    /* CENTER */
+    .stage-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .cv-wrap { position: relative; width: 100%; }
+    .cv-wrap canvas { display: block; width: 100%; height: 100%; }
+    #netWrap { height: 270px; border-bottom: 1px solid var(--border-color); }
+    #spaceWrap { flex: 1; min-height: 440px; }
+    #spaceCanvas { cursor: crosshair; touch-action: none; background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.85) 100%); }
+    #netCanvas { background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.35) 0%, rgba(15, 23, 42, 0.7) 100%); }
+
+    .canvas-overlay-bar { position: absolute; top: 0.75rem; left: 0.75rem; right: 0.75rem; display: flex; justify-content: space-between; gap: 0.5rem; pointer-events: none; flex-wrap: wrap; }
+    .canvas-legend {
+      background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-color); border-radius: 8px;
+      padding: 0.45rem 0.8rem; display: flex; gap: 0.9rem; font-size: 0.725rem; font-weight: 600;
+      backdrop-filter: blur(8px); pointer-events: auto; flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+    .legend-color { width: 9px; height: 9px; border-radius: 3px; }
+    .step-badge {
+      background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-highlight); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-family: var(--font-mono); font-size: 0.78rem; color: #38bdf8;
+      backdrop-filter: blur(8px); pointer-events: auto; display: flex; align-items: center; gap: 0.5rem; max-width: 60%;
+    }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
+    @media (max-width: 700px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    .metric-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.6rem 0.8rem; }
+    .metric-title { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-value { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: #fff; margin-top: 0.2rem; }
+
+    #chartCanvas { width: 100%; height: 100px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+
+    #hoverTooltip {
+      position: fixed; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--accent-primary);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6); border-radius: 8px; padding: 0.6rem 0.85rem;
+      font-family: var(--font-mono); font-size: 0.75rem; pointer-events: none; display: none; z-index: 100; max-width: 300px; line-height: 1.45;
+    }
+
+    /* MATH */
+    .math-section { background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .math-section.active-stage1 { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.03); }
+    .math-section.active-stage2 { border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.03); }
+    .math-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em; gap: 0.5rem; }
+    .formula-box { background: rgba(0, 0, 0, 0.4); border-radius: 6px; padding: 0.6rem 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; color: #cbd5e1; line-height: 1.5; border-left: 3px solid var(--accent-primary); overflow-x: auto; }
+    .formula-box code { color: #38bdf8; }
+    .hl-red { color: #f43f5e; font-weight: bold; }
+    .hl-green { color: #34d399; font-weight: bold; }
+    .hl-cyan { color: #22d3ee; font-weight: bold; }
+    .hl-warn { color: #fbbf24; font-weight: bold; }
+
+    table.mini { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.72rem; }
+    table.mini th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 0.2rem 0.35rem; border-bottom: 1px solid var(--border-color); }
+    table.mini td { padding: 0.2rem 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    table.mini tr.total td { border-top: 1px solid var(--border-color); font-weight: 700; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+    .pill { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.68rem; font-weight: 700; }
+    .pill-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .pill-red { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .pill-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .pill-book { background: rgba(99, 102, 241, 0.25); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); }
+
+    .hint { font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; }
+    .hint code { color: #38bdf8; font-family: var(--font-mono); }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-area">
+      <div class="badge-chip">Silva, Spatti & Flauzino</div>
+      <h1><span>Simulador de RBF - Treinamento Híbrido (Capítulo 6)</span></h1>
+    </div>
+    <div class="header-status">
+      <div class="phase-indicator idle" id="phaseIndicator">
+        <div class="phase-dot"></div>
+        <span id="phaseText">Estado: Inicial</span>
+      </div>
+      <button class="btn btn-secondary" id="btnReset" title="Reiniciar com o Projeto Prático 1 do livro">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Restaurar Livro
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- COLUNA ESQUERDA -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+          Parâmetros do Modelo
+        </div>
+        <span class="pill pill-book" id="pillTopo">Livro: 2-2-1</span>
+      </div>
+      <div class="card-body">
+
+        <div class="form-group">
+          <label class="form-label">Problema (Dados de Treinamento)</label>
+          <select id="in_dataset" class="form-control">
+            <option value="radiacao" selected>★ Projeto 1: Radiação nuclear (classificação 2D)</option>
+            <option value="xor">Questão 2: Porta XOR (não-linearmente separável)</option>
+            <option value="funcao">Projeto 2: Aproximação de função 1D (sen)</option>
+          </select>
+          <span class="hint" id="dsDesc"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Camada Intermediária</label>
+          <div class="grid-2">
+            <div>
+              <span class="sub-label">Gaussianas (n₁)</span>
+              <input type="number" id="in_n1" class="form-control" step="1" min="1" max="15" value="2">
+            </div>
+            <div>
+              <span class="sub-label">Semente (ordem/pesos)</span>
+              <div style="display:flex; gap:0.35rem;">
+                <input type="number" id="in_seed" class="form-control" step="1" min="0" value="0">
+                <button class="btn btn-secondary" style="padding:0.4rem 0.6rem;" title="Nova semente" onclick="newSeed()">🎲</button>
+              </div>
+            </div>
+          </div>
+          <label class="check-row" id="rowOnlyPos">
+            <input type="checkbox" id="in_onlyPos" checked>
+            Estágio I apenas com amostras de presença (y = +1), como no livro
+          </label>
+          <div class="grid-2">
+            <div>
+              <span class="sub-label">Fator de σ² (β, extensão)</span>
+              <input type="number" id="in_beta" class="form-control" step="0.25" min="0.1" max="20" value="1">
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <span class="hint">σ²ⱼ efetivo = β · máx(σ²ⱼ, 0,01). O piso evita σ² = 0.</span>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-color);">
+
+        <!-- ESTÁGIO I -->
+        <div class="form-group">
+          <label class="form-label"><span><span class="stage-tag tag-1">ESTÁGIO I</span> &nbsp;Não-supervisionado (k-means)</span></label>
+          <div class="grid-2">
+            <button class="btn btn-stage1" id="btnKmStep" onclick="uiKmStep()">
+              1 Iteração ➔
+            </button>
+            <button class="btn btn-stage1" id="btnKmAll" onclick="uiKmAll()">
+              Concluir Estágio I
+            </button>
+          </div>
+          <span class="hint">Centros iniciados com as n₁ primeiras amostras. Repete até que os grupos Ω⁽ʲ⁾ não mudem; depois calcula σⱼ².</span>
+        </div>
+
+        <!-- ESTÁGIO II -->
+        <div class="form-group">
+          <label class="form-label"><span><span class="stage-tag tag-2">ESTÁGIO II</span> &nbsp;Supervisionado (Regra Delta)</span></label>
+          <div class="grid-2">
+            <div>
+              <span class="sub-label">Taxa Aprend. (η)</span>
+              <input type="number" id="in_eta" class="form-control" step="0.01" min="0.0001" max="2" value="0.01">
+            </div>
+            <div>
+              <span class="sub-label" style="color:var(--accent-stage1);">Precisão (ε)</span>
+              <input type="number" id="in_eps" class="form-control" step="any" min="0" value="0.0000001" style="border-color: rgba(16,185,129,0.4);">
+            </div>
+            <div>
+              <span class="sub-label">Máx. Épocas</span>
+              <input type="number" id="in_maxEp" class="form-control" step="1000" min="10" max="2000000" value="20000">
+            </div>
+            <div>
+              <span class="sub-label">Épocas por tick</span>
+              <select id="in_perTick" class="form-control">
+                <option value="1">1</option>
+                <option value="10">10</option>
+                <option value="50" selected>50</option>
+                <option value="200">200</option>
+                <option value="1000">1000</option>
+              </select>
+            </div>
+          </div>
+          <div class="hint">Parada: <code>|E<sub>M</sub>(atual) − E<sub>M</sub>(anterior)| ≤ ε</code></div>
+          <div class="grid-2">
+            <button class="btn btn-stage2" onclick="uiStepSample()">1 Amostra (Δw)</button>
+            <button class="btn btn-stage2" onclick="uiOneEpoch()">1 Época</button>
+          </div>
+          <div class="grid-2">
+            <button class="btn btn-secondary" id="btnAutoTrain" onclick="toggleAutoTrain()">▶ Iniciar Treino</button>
+            <button class="btn btn-secondary" onclick="uiBatch(100)">+100 Épocas</button>
+          </div>
+          <button class="btn btn-primary" onclick="uiLeastSquares()" title="Referência: pesos de saída ótimos (pseudo-inversa)">
+            Solução ótima (mínimos quadrados)
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            Evolução de E<sub>M</sub> (escala log)
+            <span id="chartMinErr" style="font-family:var(--font-mono); font-size:0.7rem; color:var(--accent-stage1);"></span>
+          </label>
+          <canvas id="chartCanvas" width="310" height="100"></canvas>
+          <span class="hint">Linha tracejada verde = E<sub>M</sub> ótimo (mínimos quadrados).</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUNA CENTRAL -->
+    <section class="card" style="position:relative;">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+          <span id="centerTitle">Topologia RBF e Campos Receptivos</span>
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted);" id="centerHint">
+          Clique/arraste no gráfico para testar uma amostra
+        </div>
+      </div>
+
+      <div class="stage-wrap">
+        <div class="cv-wrap" id="netWrap"><canvas id="netCanvas"></canvas></div>
+        <div class="cv-wrap" id="spaceWrap">
+          <canvas id="spaceCanvas"></canvas>
+          <div class="canvas-overlay-bar">
+            <div class="canvas-legend" id="legendBox"></div>
+            <div class="step-badge" id="stepSubBadge"><span>Aguardando ação...</span></div>
+          </div>
+        </div>
+      </div>
+      <div id="hoverTooltip"></div>
+
+      <div style="padding: 0.85rem 1.25rem; border-top:1px solid var(--border-color); background: rgba(0,0,0,0.25);">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">Estágio</div>
+            <div class="metric-value" id="dispStage" style="font-size:0.85rem; line-height:1.2; margin-top:0.35rem;">I · k-means</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Época (t)</div>
+            <div class="metric-value" id="dispEpoch">0</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">E<sub>M</sub> (erro quadrático médio)</div>
+            <div class="metric-value" id="dispEM" style="color:var(--accent-stage2);">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">|ΔE<sub>M</sub>| vs ε</div>
+            <div class="metric-value" id="dispDEM" style="color:var(--accent-warning); font-size:0.9rem; margin-top:0.3rem;">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title" id="dispExtraTitle">Acurácia</div>
+            <div class="metric-value" id="dispExtra" style="color:var(--accent-secondary);">-</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUNA DIREITA -->
+    <section class="card col-math">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+          Equações Conforme o Livro (Capítulo 6)
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="math-section" id="boxStage1">
+          <div class="math-header">
+            <span style="color:var(--accent-stage1);">ESTÁGIO I · Centros e Variâncias</span>
+            <span class="pill pill-green" id="pillKm">k-means</span>
+          </div>
+          <div class="formula-box">
+            <strong>Centro (média do grupo):</strong><br>
+            <code>W<sub>ji</sub><sup>(1)</sup> = (1/m<sup>(j)</sup>) · ∑<sub>x∈Ω(j)</sub> x<sub>i</sub></code><br>
+            <strong>Variância (dist. quadrática média):</strong><br>
+            <code>σ<sub>j</sub>² = (1/m<sup>(j)</sup>) · ∑<sub>x∈Ω(j)</sub> ∑<sub>i</sub> (x<sub>i</sub> − W<sub>ji</sub><sup>(1)</sup>)²</code>
+          </div>
+          <div id="tblClusters"></div>
+          <div class="hint" id="kmInfo"></div>
+        </div>
+
+        <div class="math-section" id="boxOperation">
+          <div class="math-header">
+            <span style="color:var(--accent-secondary);">OPERAÇÃO · Amostra de Inspeção</span>
+            <span class="pill pill-book" id="pillProbe"></span>
+          </div>
+          <div class="formula-box">
+            <strong>Gaussiana:</strong> <code>gⱼ⁽¹⁾(x) = exp( −‖x − Wⱼ⁽¹⁾‖² / (2σⱼ²) )</code><br>
+            <strong>Saída linear:</strong> <code>y = ∑ Wⱼ⁽²⁾·gⱼ⁽¹⁾ − θ</code>
+          </div>
+          <div id="tblProbe"></div>
+          <div id="blindBox"></div>
+        </div>
+
+        <div class="math-section" id="boxStage2">
+          <div class="math-header">
+            <span style="color:var(--accent-stage2);">ESTÁGIO II · Regra Delta</span>
+            <span class="pill pill-red">Camada intermediária fixa</span>
+          </div>
+          <div class="formula-box">
+            <strong>Pseudo-amostra:</strong> <code>z = [g₁, …, g<sub>n₁</sub>]ᵀ</code> (com entrada de limiar −1)<br>
+            <strong>Erro:</strong> <code>e = d − y</code><br>
+            <strong>Ajuste:</strong> <code>ΔWⱼ⁽²⁾ = η · e · gⱼ</code>, &nbsp;<code>Δθ = −η · e</code><br>
+            <strong>Erro médio:</strong> <code>E<sub>M</sub> = (1/2p) ∑ (d<sup>(k)</sup> − y<sup>(k)</sup>)²</code>
+          </div>
+          <div class="formula-box" id="txtLastStep">Nenhuma amostra processada ainda.</div>
+          <div id="tblWeights"></div>
+        </div>
+
+        <div class="math-section">
+          <div class="math-header"><span>Leitura Didática</span></div>
+          <div class="hint" id="didactic" style="font-size:0.74rem;"></div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       NÚCLEO MATEMÁTICO (sem DOM) — Capítulo 6: RBF
+       Estágio I : k-means (centros) + variância por distância quadrática média
+       Estágio II: Regra Delta na camada de saída linear, com limiar θ
+       ========================================================================== */
+    /* CORE-BEGIN */
+    const S = {
+      dsName: 'radiacao', X: [], D: [], type: 'class', nin: 2, f: null,
+      p: { n1: 2, eta: 0.01, eps: 1e-7, maxEp: 20000, beta: 1, onlyPos: true, seed: 0, perTick: 50 },
+      km: null,
+      sig2: [], Z: [], W: [],
+      epoch: 0, prevEM: 0, EM: 0, dEM: null, hist: [], stride: 1,
+      emOpt: null, cursor: 0, last: null,
+      stopped: false, stopReason: '', trained: false,
+      probe: null, dirty: true
+    };
+
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    function gauss01(rng) {
+      let u = 0; while (u === 0) u = rng();
+      const v = rng();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    function sqd(a, b) { let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return s; }
+    function dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+
+    /* Conjuntos de dados (gerados com semente fixa → reprodutíveis) */
+    function buildDataset(name) {
+      const g = mulberry32(77);
+      const X = [], D = [];
+      if (name === 'radiacao') {
+        // 50 situações: 25 com presença (2 agrupamentos) e 25 sem presença (espalhadas)
+        const cA = [0.28, 0.32], cB = [0.72, 0.70];
+        for (let i = 0; i < 12; i++) { X.push([cA[0] + 0.06 * gauss01(g), cA[1] + 0.06 * gauss01(g)]); D.push(1); }
+        for (let i = 0; i < 13; i++) { X.push([cB[0] + 0.06 * gauss01(g), cB[1] + 0.06 * gauss01(g)]); D.push(1); }
+        let n = 0;
+        while (n < 25) {
+          const p = [g(), g()];
+          if (sqd(p, cA) > 0.04 && sqd(p, cB) > 0.04) { X.push(p); D.push(-1); n++; }
+        }
+        return { X, D, type: 'class', nin: 2, shuffle: true };
+      }
+      if (name === 'xor') {
+        return { X: [[0, 0], [0, 1], [1, 0], [1, 1]], D: [-1, 1, 1, -1], type: 'class', nin: 2, shuffle: false };
+      }
+      // função 1D: f(x) = 0,9·sen(2πx) + ruído
+      const f = x => 0.9 * Math.sin(2 * Math.PI * x);
+      for (let i = 0; i < 40; i++) { const x = g(); X.push([x]); D.push(f(x) + 0.05 * gauss01(g)); }
+      return { X, D, type: 'reg', nin: 1, shuffle: true, f };
+    }
+
+    function setupData() {
+      const ds = buildDataset(S.dsName);
+      const order = ds.X.map((_, i) => i);
+      if (ds.shuffle) {
+        const r = mulberry32(101 + S.p.seed * 977);
+        for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      }
+      S.X = order.map(i => ds.X[i]); S.D = order.map(i => ds.D[i]);
+      S.type = ds.type; S.nin = ds.nin; S.f = ds.f || null;
+      S.probe = S.X[0].slice();
+      initStage1();
+    }
+
+    /* ---------- ESTÁGIO I ---------- */
+    function initStage1() {
+      const idx = [];
+      S.X.forEach((x, i) => { if (!(S.type === 'class' && S.p.onlyPos) || S.D[i] > 0) idx.push(i); });
+      S.p.n1 = Math.max(1, Math.min(S.p.n1, idx.length, 15));
+      const k = S.p.n1;
+      S.km = {
+        idx, Xs: idx.map(i => S.X[i]),
+        C: idx.slice(0, k).map(i => S.X[i].slice()),   // <2> n₁ primeiras amostras
+        lab: null, iter: 0, done: false,
+        varRaw: new Array(k).fill(0), cnt: new Array(k).fill(0)
+      };
+      afterStage1Change();
+    }
+
+    function kmStep() {
+      const km = S.km;
+      if (km.done) return;
+      const { Xs, C } = km;
+      const lab = Xs.map(x => {                       // <3.1> agrupa no centro mais próximo
+        let b = 0, bd = Infinity;
+        C.forEach((c, j) => { const d = sqd(x, c); if (d < bd) { bd = d; b = j; } });
+        return b;
+      });
+      const changed = !km.lab || lab.some((l, i) => l !== km.lab[i]);
+      km.lab = lab; km.iter++;
+      if (!changed || km.iter >= 200) km.done = true;
+      else {                                          // <3.2> centros = média do grupo
+        for (let j = 0; j < C.length; j++) {
+          const mem = Xs.filter((_, i) => lab[i] === j);
+          if (mem.length) C[j] = C[j].map((_, d) => mem.reduce((s, m) => s + m[d], 0) / mem.length);
+        }
+      }
+      for (let j = 0; j < C.length; j++) {            // <4> σ² = distância quadrática média
+        const mem = Xs.filter((_, i) => lab[i] === j);
+        km.cnt[j] = mem.length;
+        km.varRaw[j] = mem.length ? mem.reduce((s, m) => s + sqd(m, C[j]), 0) / mem.length : 0;
+      }
+      afterStage1Change();
+    }
+
+    function afterStage1Change() {
+      const km = S.km;
+      S.sig2 = km.C.map((_, j) => Math.max(km.varRaw[j], 0.01) * S.p.beta);
+      S.Z = S.X.map(x => phi(x).concat(-1));
+      resetStage2();
+    }
+
+    function phi(x) { return S.km.C.map((c, j) => Math.exp(-sqd(x, c) / (2 * S.sig2[j]))); }
+    function predictZ(z) { return dot(z, S.W); }
+    function predict(x) { return dot(phi(x).concat(-1), S.W); }
+
+    /* ---------- ESTÁGIO II ---------- */
+    function resetStage2() {
+      const r = mulberry32(555 + S.p.seed * 31);
+      S.W = S.km.C.map(() => r() * 0.1); S.W.push(r() * 0.1);
+      S.epoch = 0; S.cursor = 0; S.last = null;
+      S.stopped = false; S.stopReason = ''; S.trained = false;
+      S.EM = calcEM(); S.prevEM = S.EM; S.dEM = null;
+      S.hist = [S.EM]; S.stride = 1;
+      S.emOpt = solveLS().em;
+      S.dirty = true;
+    }
+
+    function calcEM(W) {
+      W = W || S.W;
+      let s = 0;
+      for (let k = 0; k < S.Z.length; k++) { const e = S.D[k] - dot(S.Z[k], W); s += e * e; }
+      return s / (2 * S.Z.length);
+    }
+
+    function accuracy() {
+      let ok = 0;
+      for (let k = 0; k < S.Z.length; k++) ok += ((predictZ(S.Z[k]) >= 0 ? 1 : -1) === S.D[k]) ? 1 : 0;
+      return ok / S.Z.length;
+    }
+
+    function deltaSample(k) {
+      const z = S.Z[k], y = dot(z, S.W), e = S.D[k] - y;
+      const dW = z.map(v => S.p.eta * e * v);
+      for (let i = 0; i < dW.length; i++) S.W[i] += dW[i];
+      return { k, z: z.slice(), y, e, dW };
+    }
+
+    function pushHist(em) {
+      if (S.epoch % S.stride === 0) {
+        S.hist.push(em);
+        if (S.hist.length > 600) { S.hist = S.hist.filter((_, i) => i % 2 === 0); S.stride *= 2; }
+      }
+    }
+
+    function endEpoch() {
+      const em = calcEM();
+      S.epoch++;
+      S.dEM = Math.abs(S.prevEM - em);
+      S.prevEM = em; S.EM = em; S.trained = true; S.dirty = true;
+      pushHist(em);
+      if (!isFinite(em)) { S.stopped = true; S.stopReason = 'Divergiu (E_M não finito): reduza η'; }
+      else if (S.dEM <= S.p.eps) { S.stopped = true; S.stopReason = `|ΔE_M| = ${S.dEM.toExponential(2)} ≤ ε = ${S.p.eps.toExponential(1)}`; }
+      else if (S.epoch >= S.p.maxEp) { S.stopped = true; S.stopReason = `Limite de ${S.p.maxEp} épocas atingido`; }
+      return S.stopped;
+    }
+
+    function stepSample() {
+      S.last = deltaSample(S.cursor);
+      S.trained = true; S.dirty = true;
+      S.cursor++;
+      if (S.cursor >= S.Z.length) { S.cursor = 0; endEpoch(); }
+      else S.EM = calcEM();
+    }
+
+    function runEpochs(n) {
+      for (let t = 0; t < n; t++) {
+        for (let k = 0; k < S.Z.length; k++) S.last = deltaSample(k);
+        S.cursor = 0;
+        if (endEpoch()) break;
+      }
+      return S.stopped;
+    }
+
+    function resumeIfStopped() {
+      if (!S.stopped) return;
+      if (S.stopReason.startsWith('Limite')) S.p.maxEp *= 2;
+      else if (S.stopReason.startsWith('|')) S.p.eps /= 10;
+      S.stopped = false; S.stopReason = '';
+    }
+
+    /* Referência: mínimos quadrados (normais + eliminação de Gauss) */
+    function solveLS() {
+      const m = S.km.C.length + 1;
+      const A = Array.from({ length: m }, () => new Array(m).fill(0));
+      const b = new Array(m).fill(0);
+      for (let k = 0; k < S.Z.length; k++) {
+        const z = S.Z[k];
+        for (let i = 0; i < m; i++) { b[i] += z[i] * S.D[k]; for (let j = 0; j < m; j++) A[i][j] += z[i] * z[j]; }
+      }
+      for (let i = 0; i < m; i++) A[i][i] += 1e-9;
+      for (let c = 0; c < m; c++) {
+        let piv = c;
+        for (let r = c + 1; r < m; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+        [A[c], A[piv]] = [A[piv], A[c]]; [b[c], b[piv]] = [b[piv], b[c]];
+        for (let r = c + 1; r < m; r++) {
+          const f = A[r][c] / A[c][c];
+          for (let j = c; j < m; j++) A[r][j] -= f * A[c][j];
+          b[r] -= f * b[c];
+        }
+      }
+      const W = new Array(m).fill(0);
+      for (let i = m - 1; i >= 0; i--) {
+        let s = b[i]; for (let j = i + 1; j < m; j++) s -= A[i][j] * W[j];
+        W[i] = s / A[i][i];
+      }
+      return { W, em: calcEM(W) };
+    }
+    /* CORE-END */
+
+    /* ==========================================================================
+       INTERFACE
+       ========================================================================== */
+    const presets = {
+      radiacao: { n1: 2, eta: 0.01, eps: 1e-7, maxEp: 20000, onlyPos: true, perTick: 50, beta: 1,
+        desc: '50 situações conhecidas, 2 variáveis (x₁, x₂). Saída desejada: +1 presença / −1 ausência. Topologia do livro: 2 entradas, 2 gaussianas, 1 saída.',
+        topo: 'Livro: 2-2-1' },
+      xor: { n1: 2, eta: 0.1, eps: 1e-9, maxEp: 20000, onlyPos: true, perTick: 50, beta: 1,
+        desc: 'OU-Exclusivo: 4 pontos. Com campos hiperesféricos, 2 gaussianas centradas nos pontos +1 já resolvem. Tente desmarcar a opção do Estágio I.',
+        topo: 'XOR: 2-n₁-1' },
+      funcao: { n1: 8, eta: 0.05, eps: 1e-9, maxEp: 50000, onlyPos: false, perTick: 100, beta: 1,
+        desc: '40 amostras ruidosas de f(x) = 0,9·sen(2πx). Aproximação por superposição linear de gaussianas. Varie n₁ (5, 10, 15) como no Projeto 2.',
+        topo: 'Função: 1-n₁-1' }
+    };
+
+    const $ = id => document.getElementById(id);
+    const f3 = (v, d = 3) => (v >= 0 ? '+' : '') + v.toFixed(d);
+    const fx = (v, d = 3) => v.toFixed(d);
+    const cc = (j, a = 1) => `hsla(${(j * 137.5 + 190) % 360}, 75%, 62%, ${a})`;
+    let autoTimer = null;
+    let hovered = null;
+
+    function readParams() {
+      const num = (id, def) => { const v = parseFloat($(id).value); return isFinite(v) ? v : def; };
+      S.p.eta = Math.max(1e-6, num('in_eta', 0.01));
+      S.p.eps = Math.max(0, num('in_eps', 1e-7));
+      S.p.maxEp = Math.max(10, Math.floor(num('in_maxEp', 20000)));
+      S.p.perTick = parseInt($('in_perTick').value, 10) || 1;
+    }
+    function readStructure() {
+      S.p.n1 = Math.max(1, Math.min(15, Math.floor(parseFloat($('in_n1').value) || 2)));
+      S.p.seed = Math.max(0, Math.floor(parseFloat($('in_seed').value) || 0));
+      S.p.beta = Math.max(0.1, parseFloat($('in_beta').value) || 1);
+      S.p.onlyPos = $('in_onlyPos').checked;
+    }
+    function writeParams() {
+      $('in_n1').value = S.p.n1; $('in_seed').value = S.p.seed; $('in_beta').value = S.p.beta;
+      $('in_eta').value = S.p.eta; $('in_eps').value = S.p.eps; $('in_maxEp').value = S.p.maxEp;
+      $('in_perTick').value = String(S.p.perTick); $('in_onlyPos').checked = S.p.onlyPos;
+    }
+
+    function setPhase(type, label) {
+      $('phaseIndicator').className = 'phase-indicator ' + type;
+      $('phaseText').innerText = label;
+    }
+    function badge(html) { $('stepSubBadge').innerHTML = html; }
+
+    function applyPreset(name) {
+      stopAuto();
+      S.dsName = name;
+      const pr = presets[name];
+      Object.assign(S.p, { n1: pr.n1, eta: pr.eta, eps: pr.eps, maxEp: pr.maxEp, onlyPos: pr.onlyPos, perTick: pr.perTick, beta: pr.beta });
+      $('in_dataset').value = name;
+      fullReset();
+    }
+
+    function fullReset() {
+      stopAuto();
+      setupData();
+      writeParams();
+      const isClass = S.type === 'class';
+      $('rowOnlyPos').style.display = isClass ? 'flex' : 'none';
+      $('dsDesc').innerText = presets[S.dsName].desc;
+      $('pillTopo').innerText = presets[S.dsName].topo.replace('n₁', S.p.n1);
+      $('dispExtraTitle').innerText = isClass ? 'Acurácia' : 'E_M ótimo (LS)';
+      $('centerTitle').innerText = isClass ? 'Topologia RBF · Espaço de Entrada (x₁, x₂)' : 'Topologia RBF · Superposição de Gaussianas';
+      renderLegend();
+      resize();
+      setPhase('idle', 'Estágio I pendente');
+      badge('<span>Execute o k-means (Estágio I)</span>');
+      updateUI();
+    }
+
+    function renderLegend() {
+      const it = (c, t) => `<div class="legend-item"><span class="legend-color" style="background:${c};"></span><span>${t}</span></div>`;
+      $('legendBox').innerHTML = S.type === 'class'
+        ? it('var(--class-pos)', 'Presença (+1)') + it('var(--class-neg)', 'Ausência (−1)') + it('#fff', 'Centro W⁽¹⁾ / círculo σ') + it('#facc15', 'Teste')
+        : it('var(--class-pos)', 'Amostras') + it('#fff', 'y(x) da rede') + it('#a78bfa', 'Wⱼ·gⱼ(x)') + it('#64748b', 'f(x) real') + it('#facc15', 'Teste');
+    }
+
+    /* ---------- AÇÕES ---------- */
+    function ensureStage1() {
+      if (!S.km.done) { while (!S.km.done) kmStep(); badge('<span style="color:var(--accent-stage1)">✓ Estágio I concluído automaticamente</span>'); }
+    }
+    function uiKmStep() {
+      stopAuto();
+      if (S.km.done) { badge('<span style="color:var(--accent-stage1)">Estágio I já convergiu. Siga ao Estágio II.</span>'); return; }
+      kmStep();
+      if (S.km.done) { setPhase('stage1', 'Estágio I: Centros Fixados'); badge('<span style="color:var(--accent-stage1)">✓ Grupos estáveis · σⱼ² calculadas · camada intermediária travada</span>'); }
+      else { setPhase('stage1', `Estágio I · iteração ${S.km.iter}`); badge(`<span style="color:var(--accent-stage1)">Iteração ${S.km.iter}: amostras reagrupadas e centros recalculados</span>`); }
+      updateUI();
+    }
+    function uiKmAll() {
+      stopAuto();
+      while (!S.km.done) kmStep();
+      setPhase('stage1', 'Estágio I: Centros Fixados');
+      badge(`<span style="color:var(--accent-stage1)">✓ k-means convergiu em ${S.km.iter} iterações</span>`);
+      updateUI();
+    }
+    function prepStage2() { readParams(); ensureStage1(); resumeIfStopped(); writeParams(); }
+    function uiStepSample() {
+      stopAuto(); prepStage2();
+      stepSample();
+      setPhase('stage2', 'Estágio II · Regra Delta');
+      badge(`<span style="color:var(--accent-stage2)">Amostra ${S.last.k + 1}/${S.Z.length}: e = ${f3(S.last.e, 4)} → W ajustado</span>`);
+      afterTrain();
+    }
+    function uiOneEpoch() { stopAuto(); prepStage2(); runEpochs(1); afterTrain(); }
+    function uiBatch(n) { stopAuto(); prepStage2(); runEpochs(n); afterTrain(); }
+    function afterTrain() {
+      if (S.stopped) { setPhase('idle', 'Parada atingida'); badge(`<span style="color:var(--accent-stage1)">✓ ${S.stopReason}</span>`); }
+      else setPhase('stage2', 'Estágio II · Regra Delta');
+      updateUI();
+    }
+    function uiLeastSquares() {
+      stopAuto(); readParams(); ensureStage1();
+      const r = solveLS();
+      S.W = r.W; S.trained = true; S.dirty = true; S.EM = r.em; S.last = null;
+      setPhase('idle', 'Solução ótima (LS) aplicada');
+      badge(`<span style="color:var(--accent-secondary)">Pesos de saída = mínimos quadrados · E_M = ${S.EM.toExponential(3)}</span>`);
+      updateUI();
+    }
+    function toggleAutoTrain() {
+      if (autoTimer) { stopAuto(); setPhase('idle', 'Pausado'); return; }
+      prepStage2();
+      const btn = $('btnAutoTrain');
+      btn.innerHTML = '⏸ Pausar Treino'; btn.classList.replace('btn-secondary', 'btn-stage2');
+      setPhase('stage2', 'Treinando (Regra Delta)');
+      autoTimer = setInterval(() => {
+        readParams();
+        runEpochs(S.p.perTick);
+        if (S.stopped) { stopAuto(); afterTrain(); } else updateUI();
+      }, 60);
+    }
+    function stopAuto() {
+      if (autoTimer) clearInterval(autoTimer);
+      autoTimer = null;
+      const btn = $('btnAutoTrain');
+      btn.innerHTML = '▶ Iniciar Treino';
+      btn.classList.remove('btn-stage2'); btn.classList.add('btn-secondary');
+    }
+    function newSeed() { $('in_seed').value = Math.floor(Math.random() * 1000); readStructure(); fullKeepReset(); }
+    function fullKeepReset() { stopAuto(); setupData(); writeParams(); setPhase('idle', 'Estágio I pendente'); badge('<span>Execute o k-means (Estágio I)</span>'); updateUI(); }
+
+    $('in_dataset').addEventListener('change', e => applyPreset(e.target.value));
+    ['in_n1', 'in_seed', 'in_onlyPos'].forEach(id => $(id).addEventListener('change', () => { readStructure(); readParams(); fullKeepReset(); $('pillTopo').innerText = presets[S.dsName].topo.replace('n₁', S.p.n1); }));
+    $('in_beta').addEventListener('change', () => { readStructure(); stopAuto(); afterStage1Change(); updateUI(); });
+    ['in_eta', 'in_eps', 'in_maxEp', 'in_perTick'].forEach(id => $(id).addEventListener('change', () => { readParams(); S.stopped = false; }));
+    $('btnReset').addEventListener('click', () => { $('in_seed').value = 0; applyPreset('radiacao'); });
+
+    /* ==========================================================================
+       PAINEL MATEMÁTICO
+       ========================================================================== */
+    function updateUI() {
+      const km = S.km, n1 = km.C.length, N = S.X.length;
+      $('dispStage').innerHTML = S.trained || S.epoch > 0
+        ? '<span style="color:var(--accent-stage2)">II · Regra Delta</span>'
+        : (km.done ? '<span style="color:var(--accent-stage1)">I concluído</span>' : `<span style="color:var(--accent-stage1)">I · k-means (it. ${km.iter})</span>`);
+      $('dispEpoch').innerText = S.epoch;
+      $('dispEM').innerText = S.EM.toExponential(3);
+      $('dispDEM').innerHTML = S.dEM === null ? '-' : `<span style="color:${S.dEM <= S.p.eps ? 'var(--accent-stage1)' : 'var(--accent-warning)'}">${S.dEM.toExponential(2)}</span> <span style="color:var(--text-muted)">/ ${S.p.eps.toExponential(0)}</span>`;
+      $('dispExtra').innerText = S.type === 'class' ? (accuracy() * 100).toFixed(0) + '%' : S.emOpt.toExponential(2);
+
+      /* Estágio I */
+      $('boxStage1').classList.toggle('active-stage1', !km.done || !S.trained);
+      $('pillKm').innerText = km.done ? `convergiu · ${km.iter} it.` : (km.iter ? `iteração ${km.iter}` : 'centros = 1ªs amostras');
+      let t = '<table class="mini"><tr><th>j</th><th>m⁽ʲ⁾</th><th>Centro W⁽¹⁾</th><th>σ²</th><th>σ² efet.</th></tr>';
+      for (let j = 0; j < n1; j++) {
+        t += `<tr><td><span class="dot" style="background:${cc(j)}"></span>${j + 1}</td><td>${km.lab ? km.cnt[j] : '-'}</td><td>(${km.C[j].map(v => fx(v, 3)).join('; ')})</td><td>${km.lab ? fx(km.varRaw[j], 4) : '-'}</td><td class="hl-cyan">${fx(S.sig2[j], 4)}</td></tr>`;
+      }
+      $('tblClusters').innerHTML = t + '</table>';
+      $('kmInfo').innerHTML = `Amostras no Estágio I: <code>${km.Xs.length}</code> de ${N}. ` + (km.done ? 'Centros e variâncias <b>travados</b> para o Estágio II.' : 'Avance as iterações para ver os centros migrarem.');
+
+      /* Operação / sonda */
+      renderProbe();
+
+      /* Estágio II */
+      $('boxStage2').classList.toggle('active-stage2', S.trained);
+      const L = S.last;
+      const trunc = a => a.length > 6 ? a.slice(0, 5).map(v => f3(v, 3)).join(', ') + ', …, ' + f3(a[a.length - 1], 3) : a.map(v => f3(v, 3)).join(', ');
+      $('txtLastStep').innerHTML = L
+        ? `Amostra <b>k=${L.k + 1}</b>: d = ${f3(S.D[L.k], 2)}<br>z = [${trunc(L.z.map(v => v))}]<br>y = ${fx(L.y, 4)} ⇒ e = d − y = <span class="hl-red">${f3(L.e, 4)}</span><br>ΔW = η·e·z = [${trunc(L.dW)}]`
+        : 'Nenhuma amostra processada ainda.';
+      let w = '<table class="mini"><tr><th>Peso</th>' + S.W.map((_, i) => `<th>${i < n1 ? 'W' + (i + 1) : 'θ'}</th>`).join('') + '</tr><tr><td>valor</td>' + S.W.map(v => `<td>${f3(v, 2)}</td>`).join('') + '</tr></table>';
+      if (S.W.length > 8) w = '<div style="overflow-x:auto">' + w + '</div>';
+      $('tblWeights').innerHTML = w + (S.stopped ? `<div class="hint" style="margin-top:0.4rem; color:var(--accent-stage1)">✓ ${S.stopReason}</div>` : '');
+
+      $('chartMinErr').innerText = `E_M = ${S.EM.toExponential(2)}`;
+      renderDidactic();
+      drawChart();
+    }
+
+    function renderProbe() {
+      const x = S.probe, n1 = S.km.C.length;
+      const g = phi(x), y = predictZ(g.concat(-1));
+      const mx = Math.max(...g);
+      $('pillProbe').innerText = `x = (${x.map(v => fx(v, 2)).join('; ')})`;
+      let t = '<table class="mini"><tr><th>j</th><th>‖x−W‖²</th><th>gⱼ</th><th>Wⱼ⁽²⁾</th><th>Wⱼ·gⱼ</th></tr>';
+      for (let j = 0; j < n1; j++) {
+        t += `<tr><td><span class="dot" style="background:${cc(j)}"></span>${j + 1}</td><td>${fx(sqd(x, S.km.C[j]), 4)}</td><td class="hl-cyan">${fx(g[j], 4)}</td><td>${f3(S.W[j], 3)}</td><td>${f3(S.W[j] * g[j], 3)}</td></tr>`;
+      }
+      t += `<tr class="total"><td colspan="4">− θ (θ = ${f3(S.W[n1], 3)})</td><td>${f3(-S.W[n1], 3)}</td></tr>`;
+      t += `<tr class="total"><td colspan="4">y = ∑ − θ</td><td class="hl-green">${f3(y, 4)}</td></tr></table>`;
+      if (S.type === 'class') t += `<div class="hint" style="margin-top:0.35rem">Pós-processamento: y<sup>pós</sup> = <b>${y >= 0 ? '+1 (presença)' : '−1 (ausência)'}</b></div>`;
+      $('tblProbe').innerHTML = t;
+      $('blindBox').innerHTML = mx < 0.05
+        ? `<div class="formula-box" style="border-left-color:#f59e0b"><span class="hl-warn">⚠ PONTO CEGO:</span> máx gⱼ = ${mx.toExponential(1)} ≈ 0. Todas as gaussianas silenciam e y ≈ −θ = ${f3(-S.W[n1], 3)}. Em detecção crítica isto vira <b>falso negativo</b>.</div>`
+        : '';
+    }
+
+    function renderDidactic() {
+      const km = S.km; let m = '';
+      if (!km.done && !S.trained) m = '<b>1.</b> Rode o k-means: cada centro é a média do seu grupo; σ² mede o espalhamento do grupo.';
+      else if (!S.trained) m = '<b>2.</b> Centros e σ² travados. Agora só a camada de saída aprende: o problema virou <b>linear</b> nas gⱼ, por isso a convergência é muito mais rápida que no PMC.';
+      else if (S.stopped) m = '<b>3.</b> Parou. Compare E_M com o ótimo (linha verde). Se ficou longe, η/ε foram restritivos; use "Solução ótima" para ver o limite do modelo. Depois clique longe dos centros e observe o <b>ponto cego</b>.';
+      else m = '<b>Treinando.</b> Cada gaussiana é escalada por Wⱼ (pode ser negativo → vale). A soma ponto a ponto molda a superfície. Clique/arraste no gráfico para ler gⱼ e y.';
+      if (S.dsName === 'xor' && km.done && !S.trained) m += '<br><br>XOR: com 2 gaussianas nos pontos +1, o y = +1 só nas vizinhanças dos centros e −θ nos outros.';
+      $('didactic').innerHTML = m;
+    }
+
+    /* ==========================================================================
+       GRÁFICO DE ERRO (log)
+       ========================================================================== */
+    function drawChart() {
+      const c = $('chartCanvas'), g = c.getContext('2d'), w = c.width, h = c.height;
+      g.clearRect(0, 0, w, h);
+      const H = S.hist;
+      if (H.length < 2) { g.fillStyle = '#64748b'; g.font = '10px "JetBrains Mono"'; g.textAlign = 'center'; g.fillText('Execute o Estágio II para ver E_M...', w / 2, h / 2); return; }
+      const lg = H.map(v => Math.log10(Math.max(v, 1e-14)));
+      const lo0 = S.emOpt > 0 ? Math.log10(S.emOpt) : null;
+      let lo = Math.min(...lg, lo0 === null ? Infinity : lo0) - 0.2, hi = Math.max(...lg) + 0.2;
+      if (hi - lo < 0.5) hi = lo + 0.5;
+      const Y = v => h - 6 - (v - lo) / (hi - lo) * (h - 14);
+      g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1; g.beginPath();
+      for (let k = Math.ceil(lo); k <= hi; k++) { g.moveTo(0, Y(k)); g.lineTo(w, Y(k)); }
+      g.stroke();
+      g.fillStyle = '#64748b'; g.font = '9px "JetBrains Mono"'; g.textAlign = 'left';
+      for (let k = Math.ceil(lo); k <= hi; k++) g.fillText('1e' + k, 2, Y(k) - 2);
+      if (lo0 !== null) { g.setLineDash([4, 3]); g.strokeStyle = 'rgba(16,185,129,0.8)'; g.beginPath(); g.moveTo(0, Y(lo0)); g.lineTo(w, Y(lo0)); g.stroke(); g.setLineDash([]); }
+      g.beginPath();
+      const sx = w / (H.length - 1);
+      lg.forEach((v, i) => { i ? g.lineTo(i * sx, Y(v)) : g.moveTo(0, Y(v)); });
+      g.strokeStyle = '#f43f5e'; g.lineWidth = 2; g.stroke();
+    }
+
+    /* ==========================================================================
+       CANVAS: dimensionamento
+       ========================================================================== */
+    const netCv = $('netCanvas'), netG = netCv.getContext('2d');
+    const spCv = $('spaceCanvas'), spG = spCv.getContext('2d');
+    const dims = { net: { w: 0, h: 0 }, sp: { w: 0, h: 0 } };
+    function fit(cv, g, wrap, key) {
+      const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+      dims[key].w = r.width; dims[key].h = r.height;
+      cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      S.dirty = true;
+    }
+    function resize() { fit(netCv, netG, $('netWrap'), 'net'); fit(spCv, spG, $('spaceWrap'), 'sp'); }
+    window.addEventListener('resize', resize);
+
+    /* ==========================================================================
+       CANVAS: espaço de entrada / curva
+       ========================================================================== */
+    const heat = document.createElement('canvas'); heat.width = heat.height = 110;
+    const heatG = heat.getContext('2d');
+    const LO = -0.25, HI = 1.25;
+    let view = null;
+
+    function updateHeat() {
+      const R = heat.width, img = heatG.createImageData(R, R), n1 = S.km.C.length;
+      const grid = new Float32Array(R * R);
+      for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
+        const x = [LO + (i + 0.5) / R * (HI - LO), HI - (j + 0.5) / R * (HI - LO)];
+        grid[j * R + i] = predict(x);
+      }
+      for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
+        const v = grid[j * R + i], o = (j * R + i) * 4;
+        const t = Math.max(-1, Math.min(1, v / 1.4));
+        const col = t >= 0 ? [34, 211, 238] : [244, 114, 182];
+        img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2];
+        img.data[o + 3] = Math.abs(t) * 150;
+        const nb = [i + 1 < R ? grid[j * R + i + 1] : v, j + 1 < R ? grid[(j + 1) * R + i] : v];
+        if (nb.some(u => (u >= 0) !== (v >= 0))) { img.data[o] = img.data[o + 1] = img.data[o + 2] = 255; img.data[o + 3] = 230; }
+      }
+      heatG.putImageData(img, 0, 0);
+    }
+
+    function drawSpaceClass(g, W, H) {
+      const pad = 30, size = Math.min(W, H) - pad * 2, ox = (W - size) / 2, oy = (H - size) / 2 + 14;
+      const sx = x => ox + (x - LO) / (HI - LO) * size, sy = y => oy + size - (y - LO) / (HI - LO) * size;
+      view = { kind: 'class', ox, oy, size, inv: (px, py) => [LO + (px - ox) / size * (HI - LO), LO + (oy + size - py) / size * (HI - LO)] };
+      g.strokeStyle = 'rgba(255,255,255,0.12)'; g.strokeRect(ox, oy, size, size);
+      if (S.dirty) { updateHeat(); S.dirty = false; }
+      g.imageSmoothingEnabled = true; g.drawImage(heat, ox, oy, size, size);
+      g.setLineDash([3, 4]); g.strokeStyle = 'rgba(255,255,255,0.18)'; g.strokeRect(sx(0), sy(1), sx(1) - sx(0), sy(0) - sy(1)); g.setLineDash([]);
+      g.fillStyle = '#64748b'; g.font = '10px "JetBrains Mono"'; g.textAlign = 'center';
+      g.fillText('x₁', ox + size / 2, oy + size + 16); g.save(); g.translate(ox - 16, oy + size / 2); g.rotate(-Math.PI / 2); g.fillText('x₂', 0, 0); g.restore();
+      g.fillText('0', sx(0), oy + size + 12); g.fillText('1', sx(1), oy + size + 12);
+      g.textAlign = 'right'; g.fillText('0', ox - 4, sy(0) + 3); g.fillText('1', ox - 4, sy(1) + 3);
+
+      const km = S.km, k = size / (HI - LO);
+      km.C.forEach((c, j) => {                         // campos receptivos
+        const s = Math.sqrt(S.sig2[j]);
+        g.beginPath(); g.arc(sx(c[0]), sy(c[1]), s * k, 0, 7); g.strokeStyle = cc(j, 0.95); g.lineWidth = 2; g.stroke();
+        g.fillStyle = cc(j, 0.08); g.fill();
+        g.setLineDash([4, 4]); g.beginPath(); g.arc(sx(c[0]), sy(c[1]), 2 * s * k, 0, 7); g.strokeStyle = cc(j, 0.4); g.lineWidth = 1; g.stroke(); g.setLineDash([]);
+      });
+      S.X.forEach((x, i) => {                          // amostras
+        const pos = S.D[i] > 0;
+        g.beginPath(); g.arc(sx(x[0]), sy(x[1]), 4.5, 0, 7);
+        g.fillStyle = pos ? '#22d3ee' : '#f472b6'; g.fill();
+        g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = 1; g.stroke();
+      });
+      if (km.lab) km.idx.forEach((si, q) => {          // anel = grupo Ω(j)
+        const x = S.X[si]; g.beginPath(); g.arc(sx(x[0]), sy(x[1]), 8, 0, 7); g.strokeStyle = cc(km.lab[q], 0.9); g.lineWidth = 1.6; g.stroke();
+      });
+      km.C.forEach((c, j) => {                         // centros
+        const px = sx(c[0]), py = sy(c[1]);
+        g.strokeStyle = '#fff'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(px - 7, py); g.lineTo(px + 7, py); g.moveTo(px, py - 7); g.lineTo(px, py + 7); g.stroke();
+        g.fillStyle = '#fff'; g.font = 'bold 11px "Plus Jakarta Sans"'; g.textAlign = 'left'; g.fillText('G' + (j + 1), px + 8, py - 8);
+      });
+      if (S.last && S.cursor > 0 || (S.last && S.cursor === 0 && S.epoch === 0)) {  // amostra em processamento
+        const x = S.X[S.last.k]; g.beginPath(); g.arc(sx(x[0]), sy(x[1]), 12, 0, 7); g.strokeStyle = '#facc15'; g.lineWidth = 2; g.stroke();
+      }
+      drawProbeMark(g, sx(S.probe[0]), sy(S.probe[1]));
+    }
+
+    function drawProbeMark(g, px, py) {
+      g.save(); g.translate(px, py); g.rotate(Math.PI / 4);
+      g.fillStyle = '#facc15'; g.fillRect(-5, -5, 10, 10); g.strokeStyle = '#000'; g.lineWidth = 1; g.strokeRect(-5, -5, 10, 10); g.restore();
+    }
+
+    function drawSpaceReg(g, W, H) {
+      const ml = 46, mr = 16, mt = 56, mb = 34, YL = -1.7, YH = 1.7;
+      const pw = W - ml - mr, ph = H - mt - mb;
+      const sx = x => ml + (x - LO) / (HI - LO) * pw, sy = y => mt + (YH - y) / (YH - YL) * ph;
+      view = { kind: 'reg', inv: (px) => [LO + (px - ml) / pw * (HI - LO)] };
+      g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 1; g.fillStyle = '#64748b'; g.font = '10px "JetBrains Mono"';
+      g.textAlign = 'right';
+      for (let v = -1.5; v <= 1.5; v += 0.5) { g.beginPath(); g.moveTo(ml, sy(v)); g.lineTo(ml + pw, sy(v)); g.stroke(); g.fillText(v.toFixed(1), ml - 6, sy(v) + 3); }
+      g.textAlign = 'center';
+      for (let v = -0.25; v <= 1.25; v += 0.25) g.fillText(v.toFixed(2), sx(v), mt + ph + 14);
+      g.strokeStyle = 'rgba(255,255,255,0.15)'; g.setLineDash([3, 4]); g.beginPath(); g.moveTo(sx(0), mt); g.lineTo(sx(0), mt + ph); g.moveTo(sx(1), mt); g.lineTo(sx(1), mt + ph); g.stroke(); g.setLineDash([]);
+      const n1 = S.km.C.length, M = 260;
+      const xs = Array.from({ length: M + 1 }, (_, i) => LO + (HI - LO) * i / M);
+      if (S.f) { g.beginPath(); xs.filter(x => x >= 0 && x <= 1).forEach((x, i) => i ? g.lineTo(sx(x), sy(S.f(x))) : g.moveTo(sx(x), sy(S.f(x)))); g.strokeStyle = '#64748b'; g.setLineDash([6, 4]); g.lineWidth = 1.6; g.stroke(); g.setLineDash([]); }
+      for (let j = 0; j < n1; j++) {                   // gaussianas (cruas ou ponderadas)
+        const c = S.km.C[j][0], s2 = S.sig2[j], wj = S.trained ? S.W[j] : 1;
+        g.beginPath();
+        xs.forEach((x, i) => { const y = wj * Math.exp(-((x - c) ** 2) / (2 * s2)); i ? g.lineTo(sx(x), sy(y)) : g.moveTo(sx(x), sy(y)); });
+        g.strokeStyle = S.trained ? cc(j, 0.75) : cc(j, 0.45); g.lineWidth = 1.4; if (!S.trained) g.setLineDash([4, 3]); g.stroke(); g.setLineDash([]);
+        g.fillStyle = cc(j, 0.9); g.beginPath(); g.arc(sx(c), sy(0), 3.5, 0, 7); g.fill();
+      }
+      if (S.trained) {                                 // saída da rede
+        g.beginPath(); xs.forEach((x, i) => { const y = predict([x]); i ? g.lineTo(sx(x), sy(y)) : g.moveTo(sx(x), sy(y)); });
+        g.strokeStyle = '#fff'; g.lineWidth = 3; g.shadowColor = '#fff'; g.shadowBlur = 6; g.stroke(); g.shadowBlur = 0;
+      }
+      S.X.forEach((x, i) => { g.beginPath(); g.arc(sx(x[0]), sy(S.D[i]), 3.6, 0, 7); g.fillStyle = '#22d3ee'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.6)'; g.stroke(); });
+      if (S.last) { g.beginPath(); g.arc(sx(S.X[S.last.k][0]), sy(S.D[S.last.k]), 9, 0, 7); g.strokeStyle = '#facc15'; g.lineWidth = 2; g.stroke(); }
+      const px = sx(S.probe[0]), yv = predict(S.probe);   // teste
+      g.setLineDash([4, 4]); g.strokeStyle = '#facc15'; g.lineWidth = 1; g.beginPath(); g.moveTo(px, mt); g.lineTo(px, mt + ph); g.stroke(); g.setLineDash([]);
+      drawProbeMark(g, px, sy(Math.max(YL, Math.min(YH, yv))));
+      g.fillStyle = '#64748b'; g.textAlign = 'center'; g.fillText('x', ml + pw / 2, H - 6);
+    }
+
+    /* ==========================================================================
+       CANVAS: topologia da rede
+       ========================================================================== */
+    let netNodes = [];
+    function drawNet(t) {
+      const g = netG, W = dims.net.w, H = dims.net.h;
+      if (!W) return;
+      g.clearRect(0, 0, W, H);
+      const n1 = S.km.C.length, nin = S.nin;
+      const xs = [W * 0.12, W * 0.5, W * 0.86], top = 62, bot = H - 14;
+      const yAt = (i, n) => top + (bot - top) * (i + 0.5) / n;
+      const gv = phi(S.probe), yv = predictZ(gv.concat(-1));
+      netNodes = [];
+      const inN = Array.from({ length: nin }, (_, i) => ({ kind: 'in', i, x: xs[0], y: yAt(i, nin), r: 18, v: S.probe[i] }));
+      const rg = Math.max(4, Math.min(20, (bot - top) / n1 * 0.42));
+      const gN = Array.from({ length: n1 }, (_, j) => ({ kind: 'g', j, x: xs[1], y: yAt(j, n1), r: rg, v: gv[j] }));
+      const out = { kind: 'out', x: xs[2], y: (top + bot) / 2 + 12, r: 26, v: yv };
+      const th = { kind: 'th', x: xs[2], y: 38, r: 12, v: -1 };
+      netNodes = [...inN, ...gN, out, th];
+
+      g.font = '600 10px "Plus Jakarta Sans"'; g.textAlign = 'center'; g.fillStyle = '#94a3b8';
+      g.fillText('ENTRADA', xs[0], 18); g.fillText('INTERMEDIÁRIA · GAUSSIANAS (centros = pesos W⁽¹⁾)', xs[1], 18); g.fillText('SAÍDA · LINEAR', xs[2], 18);
+      const tt = (t / 700) % 1;
+      inN.forEach(a => gN.forEach(b => {               // entrada → gaussiana (pesos = centros)
+        g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.strokeStyle = 'rgba(148,163,184,0.18)'; g.lineWidth = 1; g.stroke();
+      }));
+      gN.forEach(b => {                                // gaussiana → saída (Wⱼ⁽²⁾)
+        const w = S.W[b.j];
+        g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(out.x, out.y);
+        g.strokeStyle = w >= 0 ? 'rgba(56,189,248,0.45)' : 'rgba(244,63,94,0.45)';
+        g.lineWidth = Math.min(Math.max(Math.abs(w) * 2.2, 0.8), 6); g.stroke();
+        if (b.v > 0.02) { g.beginPath(); g.arc(b.x + (out.x - b.x) * tt, b.y + (out.y - b.y) * tt, 2.4, 0, 7); g.fillStyle = '#34d399'; g.fill(); }
+      });
+      g.beginPath(); g.moveTo(th.x, th.y); g.lineTo(out.x, out.y);
+      g.strokeStyle = S.W[n1] >= 0 ? 'rgba(56,189,248,0.45)' : 'rgba(244,63,94,0.45)'; g.lineWidth = Math.min(Math.max(Math.abs(S.W[n1]) * 2.2, 0.8), 6); g.stroke();
+
+      netNodes.forEach(n => {
+        const hov = hovered && hovered.kind === n.kind && hovered.i === n.i && hovered.j === n.j;
+        const col = n.kind === 'in' ? '#0ea5e9' : n.kind === 'g' ? '#8b5cf6' : n.kind === 'out' ? '#ec4899' : '#64748b';
+        const act = n.kind === 'g' ? Math.max(0, Math.min(1, n.v)) : 0.5;
+        g.save();
+        g.beginPath(); g.arc(n.x, n.y, hov ? n.r + 3 : n.r, 0, 7);
+        g.fillStyle = n.kind === 'g' ? `rgba(139,92,246,${0.12 + 0.75 * act})` : 'rgba(15,23,42,0.95)';
+        g.fill();
+        g.lineWidth = hov ? 2.6 : 1.8; g.strokeStyle = hov ? '#fff' : col; g.shadowColor = col; g.shadowBlur = n.kind === 'g' ? 3 + 12 * act : 5; g.stroke(); g.restore();
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff';
+        if (n.kind === 'in') { g.font = 'bold 11px "Plus Jakarta Sans"'; g.fillText('x' + (n.i + 1), n.x, n.y - 4); g.font = '9px "JetBrains Mono"'; g.fillText(n.v.toFixed(2), n.x, n.y + 8); }
+        else if (n.kind === 'g') { if (n.r >= 9) { g.font = '9px "JetBrains Mono"'; g.fillText(n.v.toFixed(2), n.x, n.y); } g.font = '9px "Plus Jakarta Sans"'; g.fillStyle = cc(n.j); g.textAlign = 'right'; if (n.r >= 6) g.fillText('G' + (n.j + 1), n.x - n.r - 5, n.y); }
+        else if (n.kind === 'out') { g.font = 'bold 11px "Plus Jakarta Sans"'; g.fillText('y', n.x, n.y - 6); g.font = '10px "JetBrains Mono"'; g.fillText(n.v.toFixed(3), n.x, n.y + 8); }
+        else { g.font = 'bold 10px "Plus Jakarta Sans"'; g.fillText('θ', n.x, n.y - 2); g.font = '8px "JetBrains Mono"'; g.fillStyle = '#94a3b8'; g.fillText('−1', n.x, n.y + 7); g.textAlign = 'left'; g.fillText('θ=' + S.W[n1].toFixed(2), n.x + 16, n.y); }
+        g.textBaseline = 'alphabetic';
+      });
+    }
+
+    function frame(t) {
+      const g = spG, W = dims.sp.w, H = dims.sp.h;
+      if (W) { g.clearRect(0, 0, W, H); if (S.type === 'class') drawSpaceClass(g, W, H); else { if (S.dirty) S.dirty = false; drawSpaceReg(g, W, H); } }
+      drawNet(t);
+      requestAnimationFrame(frame);
+    }
+
+    /* ==========================================================================
+       INTERAÇÃO
+       ========================================================================== */
+    let dragging = false;
+    function setProbeFromEvent(e) {
+      const r = spCv.getBoundingClientRect(), p = view.inv(e.clientX - r.left, e.clientY - r.top);
+      S.probe = p; renderProbe();
+    }
+    spCv.addEventListener('pointerdown', e => { dragging = true; spCv.setPointerCapture(e.pointerId); setProbeFromEvent(e); });
+    spCv.addEventListener('pointermove', e => { if (dragging) setProbeFromEvent(e); });
+    spCv.addEventListener('pointerup', () => { dragging = false; });
+
+    netCv.addEventListener('mousemove', e => {
+      const r = netCv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, tip = $('hoverTooltip');
+      hovered = netNodes.find(n => Math.hypot(mx - n.x, my - n.y) <= n.r + 4) || null;
+      if (!hovered) { tip.style.display = 'none'; return; }
+      tip.style.display = 'block'; tip.style.left = (e.clientX + 15) + 'px'; tip.style.top = (e.clientY + 15) + 'px';
+      const h = hovered, n1 = S.km.C.length;
+      if (h.kind === 'g') tip.innerHTML = `<b style="color:#a78bfa">Gaussiana G${h.j + 1}</b><br>Centro W⁽¹⁾: (${S.km.C[h.j].map(v => v.toFixed(3)).join('; ')})<br>σ² efetivo: ${S.sig2[h.j].toFixed(4)}<br>g(x) agora: <b>${h.v.toFixed(5)}</b><br>Peso saída W⁽²⁾: ${f3(S.W[h.j], 4)}<br>Contribuição: ${f3(S.W[h.j] * h.v, 4)}`;
+      else if (h.kind === 'in') tip.innerHTML = `<b style="color:#38bdf8">Entrada x${h.i + 1}</b><br>Valor: ${h.v.toFixed(4)}<br>Sensor: apenas repassa o sinal`;
+      else if (h.kind === 'out') tip.innerHTML = `<b style="color:#ec4899">Saída linear</b><br>y = ∑ Wⱼ·gⱼ − θ = <b>${h.v.toFixed(5)}</b><br>g⁽²⁾(u) = u (ativação linear)`;
+      else tip.innerHTML = `<b>Limiar θ</b><br>Entrada fixa −1 · peso θ = ${f3(S.W[n1], 4)}<br>Desloca verticalmente a saída`;
+    });
+    netCv.addEventListener('mouseleave', () => { hovered = null; $('hoverTooltip').style.display = 'none'; });
+
+    window.onload = () => {
+      applyPreset('radiacao');
+      requestAnimationFrame(frame);
+    };
+  </script>
+</body>
+</html>
